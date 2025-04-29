@@ -5,6 +5,7 @@
 //  para um vetor o intervalo fechado é [0,262143]
 #define HTSIZE 5000
 #define HTNULL -1
+#define hash(v) (v % HTSIZE)
 
 typedef struct no
 {
@@ -47,29 +48,24 @@ int LEsearch(lista_st *lista, int x)
 
 typedef struct HT_st
 {
-    lista_st *ht;
+    lista_st *pLE;
     int count;
 } HT_st;
 
-int hash(int value)
-{
-    return value % HTSIZE;
-}
-
 void HTinit(HT_st *HT)
 {
-    HT->ht = malloc(sizeof(lista_st) * HTSIZE);
+    HT->pLE = malloc(sizeof(lista_st) * HTSIZE);
     HT->count = 0;
 
     // elemento vazio da tabela hash será o -1
     for (int i = 0; i < HTSIZE; i++)
-        LEinit(&HT->ht[i]);
+        LEinit(&HT->pLE[i]);
 }
 
 void HTinsert(HT_st *HT, int x)
 {
     int hashv = hash(x);
-    LEinsert(&HT->ht[hashv], x);
+    LEinsert(&HT->pLE[hashv], x);
     HT->count++;
 }
 
@@ -77,7 +73,7 @@ int HTsearch(HT_st *HT, int x)
 {
     int hashv = hash(x);
 
-    return LEsearch(&HT->ht[hashv], x);
+    return LEsearch(&HT->pLE[hashv], x);
 }
 
 int main()
@@ -96,18 +92,18 @@ int main()
             scanf("%d", &pato);
             HTinsert(&hashtable, pato);
         }
-        int mfValue, mfCount = 0;
+        lista_st mf = {NULL, 0};
         for (int i = 0; i < HTSIZE; i++)
         {
-            if (hashtable.ht[i].head == NULL)
+            if (hashtable.pLE[i].head == NULL)
                 continue;
-            if (hashtable.ht[i].count > mfCount)
+            if (hashtable.pLE[i].count > mf.count)
             {
-                mfCount = hashtable.ht[i].count;
-                mfValue = hashtable.ht[i].head->value;
+                mf.count = hashtable.pLE[i].count;
+                mf.head = hashtable.pLE[i].head;
             }
         }
-        printf("%d\n", mfValue);
+        printf("%d\n", mf.head->value);
     }
 
     printf("\n");

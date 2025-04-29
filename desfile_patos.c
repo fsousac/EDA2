@@ -3,7 +3,7 @@
 
 // HT = HashTable = Tabela Hash
 //  para um vetor o intervalo fechado é [0,262143]
-#define HTSIZE 140000
+#define HTSIZE 5000
 #define HTNULL -1
 
 typedef struct no
@@ -29,6 +29,7 @@ void LEinsert(lista_st *lista, int value)
     no *l = malloc(sizeof(no));
     l->value = value;
     l->prox = lista->head;
+
     lista->head = l;
     lista->count++;
 }
@@ -78,4 +79,39 @@ int HTsearch(HT_st *HT, int x)
     int hashv = hash(x);
 
     return LEsearch(&HT->ht[hashv], x);
+}
+
+int main()
+{
+    int N = -1;
+
+    while (1)
+    {
+        scanf("%d", &N);
+        if (N == 0)
+            break;
+        HT_st hashtable;
+        HTinit(&hashtable);
+        for (int i = 0; i < N; i++)
+        {
+            int pato;
+            scanf("%d", &pato);
+            HTinsert(&hashtable, pato);
+        }
+        int mfValue, mfCount = 0;
+        for (int i = 0; i < HTSIZE; i++)
+        {
+            if (hashtable.ht[i].head == NULL)
+                continue;
+            if (hashtable.ht[i].count > mfCount)
+            {
+                mfCount = hashtable.ht[i].count;
+                mfValue = hashtable.ht[i].head->value;
+            }
+        }
+        printf("%d\n", mfValue);
+    }
+
+    printf("\n");
+    return 0;
 }
