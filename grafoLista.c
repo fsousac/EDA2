@@ -1,12 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+struct node
+{
+    int v;
+    link next;
+};
+typedef struct node *link;
+
 struct graph
 {
     int V;
     int E;
     link *adj;
 };
+typedef struct graph *Graph;
 
 typedef struct
 {
@@ -14,17 +22,7 @@ typedef struct
     int w;
 } Edge;
 
-typedef struct node *link;
-
-struct node
-{
-    int v;
-    link next;
-};
-
 Edge EDGE(int, int);
-
-typedef struct graph *Graph;
 
 link NEW(int v, link next)
 {
