@@ -70,17 +70,6 @@ void GRAPHInsertE(Graph G, Edge e)
     G->E++;
 }
 
-typedef struct
-{
-    int v;
-    int capacity;
-} gasPump;
-
-// Restaurantes
-
-#include <stdio.h>
-#include <stdlib.h>
-
 // Lista encadeada de pedidos
 typedef struct Order *OrderLink;
 
@@ -138,20 +127,166 @@ int hasOrder(OrderList *qOrders, int r)
     return qOrders[r].count > 0;
 }
 
+// DJIKSTRA
+
+int *pq, *qp, PQN, PQsize;
+
+void PQinit(int n)
+{
+    PQN = n;
+    PQsize = 0;
+    pq = malloc((n + 1) * sizeof(int));
+    qp = malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++)
+        qp[i] = -1;
+}
+
+int PQempty()
+{
+    return PQsize == 0;
+}
+
+void exch(int i, int j)
+{
+    int t = pq[i];
+    pq[i] = pq[j];
+    pq[j] = t;
+    qp[pq[i]] = i;
+    qp[pq[j]] = j;
+}
+
+void fixUp(int k, int *dist)
+{
+    while (k > 1 && dist[pq[k / 2]] > dist[pq[k]])
+    {
+        exch(k, k / 2);
+        k = k / 2;
+    }
+}
+
+void fixDown(int k, int *dist)
+{
+    int j;
+    while (2 * k <= PQsize)
+    {
+        j = 2 * k;
+        if (j < PQsize && dist[pq[j]] > dist[pq[j + 1]])
+            j++;
+        if (dist[pq[k]] <= dist[pq[j]])
+            break;
+        exch(k, j);
+        k = j;
+    }
+}
+
+void PQinsert(int v, int *dist)
+{
+    pq[++PQsize] = v;
+    qp[v] = PQsize;
+    fixUp(PQsize, dist);
+}
+
+int PQdelmin(int *dist)
+{
+    int min = pq[1];
+    exch(1, PQsize--);
+    fixDown(1, dist);
+    qp[min] = -1;
+    return min;
+}
+
+void PQdec(int v, int *dist)
+{
+    fixUp(qp[v], dist);
+}
+
+void PQfree()
+{
+    free(pq);
+    free(qp);
+}
+
+void GRAPHcptD2(Graph G, OrderList *o, int s, int *pa, int *dist)
+{
+    int mature[G->V + 1];
+    for (int v = 0; v < G->V; ++v)
+        pa[v] = -1, mature[v] = 0, dist[v] = INT_MAX;
+    pa[s] = s, dist[s] = 0;
+    PQinit(G->V + 1);
+    for (int v = 1; v <= G->V; ++v)
+        PQinsert(v, dist);
+
+    while (!PQempty())
+    {
+        int y = PQdelmin(dist);
+        if (dist[y] == INT_MAX)
+            break;
+        // atualização de dist[] e pa[]:
+        for (link a = G->adj[y]; a != NULL; a = a->next)
+        {
+            int w = a->v;
+            if (mature[w])
+                continue;
+            if (dist[y] + a->c < dist[w])
+            {
+                dist[w] = dist[y] + a->c;
+                PQdec(w, dist);
+                pa[w] = y;
+            }
+        }
+        mature[y] = 1;
+    }
+    PQfree();
+}
+
+// Iteractive functions
+
+void refuel(int *tank, int *station)
+{
+    printf("a\n");
+    int temp;
+    scanf("%d", &temp);
+    if (*station == tankMax)
+    {
+        *station = temp;
+        *tank = tankMax;
+    }
+    else
+    {
+        *tank += *station - temp;
+        *station = temp;
+    }
+}
+
+int nearestRestaurant(OrderList *o, int *dist, int nodes)
+{
+    int km = INT_MAX, next = 0;
+    for (int i = 1; i <= nodes; i++)
+    {
+        if (o[i].count > 0 && dist[i] < km)
+        {
+            km = dist[i];
+            next = i;
+        }
+    }
+
+    return next;
+}
+
+int nodes, streets, home, tankMax, startTank, bagSize, fuelNodes;
 int main()
 {
     // int N, M, H, T, I, C, P;
-    int nodes, streets, home, tankMax, startTank, bagSize, fuelNodes;
     scanf("%d %d %d %d %d %d %d", &nodes, &streets, &home, &tankMax, &startTank, &bagSize, &fuelNodes);
-    gasPump *gasStations = malloc(sizeof(gasPump) * fuelNodes);
+    int *gasStations = malloc(sizeof(int) * (nodes + 1));
+    for (int i = 1; i <= nodes; i++)
+        gasStations[i] = -1;
+
     for (int i = 0; i < fuelNodes; i++)
     {
         int temp;
         scanf("%d", &temp);
-        gasPump gp;
-        gp.v = temp;
-        gp.capacity = tankMax;
-        gasStations[i] = gp;
+        gasStations[temp] = tankMax;
     }
 
     Graph G = GRAPHinit(nodes);
@@ -167,6 +302,12 @@ int main()
     scanf("%d", &qRest);
 
     OrderList *qOrders = malloc((nodes + 1) * sizeof(*qOrders));
+    for (int i = 1; i <= nodes; i++)
+    {
+        qOrders[i].count = 0;
+        qOrders[i].head = NULL;
+    }
+
     for (int i = 0; i < qRest; i++)
     {
         int node, orders;
@@ -177,6 +318,23 @@ int main()
             int destiny;
             scanf("%d", &destiny);
             addOrder(qOrders, node, destiny);
+        }
+    }
+    int cNode = home;
+    int cTank = tankMax;
+    int cBag = 0;
+    int *pa = malloc((nodes + 1) * sizeof(int));
+    int *dist = malloc((nodes + 1) * sizeof(int));
+    GRAPHcptD2(G, qOrders, home, pa, dist);
+    while (1)
+    {
+        if (gasStations[cNode] > 0 && cTank < tankMax)
+        {
+            refuel(cTank, gasStations[cNode]);
+        }
+        if (cBag == 0)
+        {
+            int destination = nearestRestaurant(qOrders, dist, nodes);
         }
     }
 
