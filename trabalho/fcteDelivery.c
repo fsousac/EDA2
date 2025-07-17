@@ -206,10 +206,11 @@ void PQfree()
     free(qp);
 }
 
-void GRAPHcptD2(Graph G, OrderList *o, int s, int *pa, int *dist)
+int *pa, *dist;
+void GRAPHcptD2(Graph G, OrderList *o, int s, int d)
 {
     int mature[G->V + 1];
-    for (int v = 0; v < G->V; ++v)
+    for (int v = 1; v <= G->V; v++)
         pa[v] = -1, mature[v] = 0, dist[v] = INT_MAX;
     pa[s] = s, dist[s] = 0;
     PQinit(G->V + 1);
@@ -235,10 +236,13 @@ void GRAPHcptD2(Graph G, OrderList *o, int s, int *pa, int *dist)
             }
         }
         mature[y] = 1;
+        if (y == d)
+            break;
     }
     PQfree();
 }
 
+int nodes, streets, home, tankMax, startTank, bagSize, fuelNodes;
 // Iteractive functions
 
 void refuel(int *tank, int *station)
@@ -260,10 +264,24 @@ void refuel(int *tank, int *station)
 
 int nearestRestaurant(OrderList *o, int *dist, int nodes)
 {
-    int km = INT_MAX, next = 0;
+    int km = INT_MAX, next = home;
     for (int i = 1; i <= nodes; i++)
     {
         if (o[i].count > 0 && dist[i] < km)
+        {
+            km = dist[i];
+            next = i;
+        }
+    }
+    return next;
+}
+
+int nearestGasStation(int *s, int *dist, int nodes)
+{
+    int km = INT_MAX, next = 0;
+    for (int i = 1; i <= nodes; i++)
+    {
+        if (s[i] > 0 && dist[i] < km)
         {
             km = dist[i];
             next = i;
@@ -273,7 +291,34 @@ int nearestRestaurant(OrderList *o, int *dist, int nodes)
     return next;
 }
 
-int nodes, streets, home, tankMax, startTank, bagSize, fuelNodes;
+int moveTo(int start, int end, int *pa)
+{
+    if (pa[end] != start)
+    {
+        moveTo(start, pa[end], pa);
+    }
+    printf("m %d\n", end);
+    int suc;
+    scanf("%d", &suc);
+    if (!suc)
+        exit(1);
+    return end;
+}
+
+int takeOrder(OrderList *l, int s, int *bag)
+{
+    int dest = l[s].head->destination;
+    printf("p %d\n", dest);
+    int suc;
+    scanf("%d", &suc);
+    if (!suc)
+        exit(1);
+    (*bag)++;
+    l[s].head = l[s].head->next;
+    l[s].count--;
+    return dest;
+}
+
 int main()
 {
     // int N, M, H, T, I, C, P;
@@ -322,19 +367,37 @@ int main()
     }
     int cNode = home;
     int cTank = tankMax;
-    int cBag = 0;
-    int *pa = malloc((nodes + 1) * sizeof(int));
-    int *dist = malloc((nodes + 1) * sizeof(int));
-    GRAPHcptD2(G, qOrders, home, pa, dist);
+    int qBag = 0;
+    int bag[bagSize];
+    pa = malloc((nodes + 1) * sizeof(int));
+    dist = malloc((nodes + 1) * sizeof(int));
+    GRAPHcptD2(G, qOrders, home, -1);
     while (1)
     {
         if (gasStations[cNode] > 0 && cTank < tankMax)
         {
-            refuel(cTank, gasStations[cNode]);
+            refuel(&cTank, &gasStations[cNode]);
         }
-        if (cBag == 0)
+        if (qBag == 0)
         {
             int destination = nearestRestaurant(qOrders, dist, nodes);
+            GRAPHcptD2(G, qOrders, cNode, destination);
+
+            if (dist[destination] > cTank)
+            {
+                destination = nearestGasStation(gasStations, dist, nodes);
+                cNode = moveTo(cNode, destination, pa);
+            }
+            else
+            {
+                cNode = moveTo(cNode, destination, pa);
+                cTank -= dist[destination];
+                int dest = 0;
+                while (qOrders[cNode].count > 0 && qBag < bagSize)
+                {
+                    bag[dest++] = takeOrder(qOrders, cNode, &qBag);
+                }
+            }
         }
     }
 
